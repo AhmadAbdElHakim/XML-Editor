@@ -97,12 +97,12 @@
     </property>
     <item>
      <property name="text">
-      <string>Check XML Consistency</string>
+      <string>Prettify </string>
      </property>
     </item>
     <item>
      <property name="text">
-      <string>Prettify </string>
+      <string>Check XML Consistency</string>
      </property>
     </item>
     <item>
@@ -116,12 +116,27 @@
      </property>
     </item>
    </widget>
-   <zorder>layoutWidget</zorder>
+   <widget class="QPushButton" name="pushButton">
+    <property name="geometry">
+     <rect>
+      <x>250</x>
+      <y>10</y>
+      <width>75</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Test</string>
+    </property>
+   </widget>
+   <zorder>OpenFileButton</zorder>
+   <zorder>comboBox</zorder>
    <zorder>Save_Button</zorder>
    <zorder>input_text</zorder>
    <zorder>output_text</zorder>
    <zorder>label</zorder>
    <zorder>label_2</zorder>
+   <zorder>pushButton</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
