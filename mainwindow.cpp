@@ -30,7 +30,7 @@ void readFile(){
     std::string line;
 
     while (!myfile.atEnd())
-    { line = myfile.readLine().toStdString();
+    { line = (myfile.readLine().trimmed()).toStdString();
       lines.push_back(line);
     }
 
@@ -262,8 +262,6 @@ void makeOneNodeForRepeatedChild(Node* root){
         }
         addChildren(root,simp);
      }
-
-     //LevelOrderTraversal(root);
 return;
 }
 
@@ -275,6 +273,7 @@ if(root==NULL){return ;}
     }
 return;
 }
+
 ///////////////////////////////////////////////////////////////////////////
 
 void makeQutation(Node* root){
@@ -326,14 +325,13 @@ void makeBrackets(Node* root){
 }
 
 void printNode(Node* root){
-
     //////////////// print * nodes  /////////////////////////////
 
-    if(root->data == "*" && root->children.size() == 1 && root->children[0]->children.size() == 0)
+    if((root->data == "*") && (root->children.size() == 1) && (root->children[0]->children.size() == 0))
     {return;}
 
     else if(root->data == "*" && root->children.size() >= 1)
-    {json+="{";}
+    {json+="{";return;}
 
     ////////////// print last nodes /////////////////////////////
 
@@ -343,7 +341,7 @@ void printNode(Node* root){
     else if(root->children.size() == 0)
     {json+=root->data+",";}
 
-    ///////////print tag nodes /////////////////////////////////
+    //////////////print tag nodes /////////////////////////////////
 
     else if(root->children.size() == 1 && root->children[0]->children.size() != 0 && root->data != "*" && root->data.find('=') == -1)
     {json+=root->data+":{";}
@@ -413,8 +411,6 @@ void makeJson(Node* root){
 
     makeBrackets(root);
 
-    //LevelOrderTraversal(current_root);
-
     print(root);
 
     json[json.length()-1] = '}';
@@ -428,7 +424,7 @@ void MainWindow::on_JSON_Button_clicked()
 
       getTagsAndLines();      //sort lines according to 1-tags only stored in tags vector, 2-tags and sentences stored in tagsAndLines vector
 
-      //makePureTags();         // separate line of tags from extra data ex. ( ahmed id="1" ) ---> ( ahmed ),stored in pureTags vector
+      makePureTags();         // separate line of tags from extra data ex. ( ahmed id="1" ) ---> ( ahmed ),stored in pureTags vector
 
       makePureTagsLinesWithoutSlash();               //this vector contain openTags without slash or data, closeTag without slash, data start with ~ sign
 
@@ -438,14 +434,15 @@ void MainWindow::on_JSON_Button_clicked()
 
       organizeTree(current_root);                                           //organize tree, as if repeated node get merged
 
-      //LevelOrderTraversal(current_root);
-
       makeJson(current_root);                       //transfer xml tree to json
 
       st<<QString::fromStdString(json);         //print json
       mytempfile.close();
-      ui->output_text->clear();
-      ui->output_text->setPlainText(st.readAll());
+      mytempfile.open(QIODevice::ReadWrite |QIODevice::Text);
+      QTextStream strq(&mytempfile);
+      ui->input_text->setLineWrapMode(QPlainTextEdit::NoWrap);
+      ui->output_text->insertPlainText(strq.readAll());
+      mytempfile.close();
 
 }
 
