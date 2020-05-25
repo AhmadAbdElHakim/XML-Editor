@@ -36,15 +36,14 @@
       <height>331</height>
      </rect>
     </property>
-   </widget>
-   <widget class="QPlainTextEdit" name="output_text">
-    <property name="geometry">
-     <rect>
-      <x>450</x>
-      <y>90</y>
-      <width>301</width>
-      <height>331</height>
-     </rect>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="backgroundVisible">
+     <bool>false</bool>
     </property>
    </widget>
    <widget class="QLabel" name="label">
@@ -145,16 +144,40 @@
      <string>Remove Spaces</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="Check_Button">
+    <property name="geometry">
+     <rect>
+      <x>210</x>
+      <y>40</y>
+      <width>75</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Check</string>
+    </property>
+   </widget>
+   <widget class="QPlainTextEdit" name="output_text">
+    <property name="geometry">
+     <rect>
+      <x>440</x>
+      <y>90</y>
+      <width>321</width>
+      <height>321</height>
+     </rect>
+    </property>
+   </widget>
    <zorder>OpenFileButton</zorder>
    <zorder>comboBox</zorder>
    <zorder>Save_Button</zorder>
    <zorder>input_text</zorder>
-   <zorder>output_text</zorder>
    <zorder>label</zorder>
    <zorder>label_2</zorder>
    <zorder>Prettify_Button</zorder>
    <zorder>JSON_Button</zorder>
    <zorder>Remove_Spaces</zorder>
+   <zorder>Check_Button</zorder>
+   <zorder>output_text</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -165,6 +188,12 @@
      <height>21</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuXML_Editor">
+    <property name="title">
+     <string>XML Editor</string>
+    </property>
+   </widget>
+   <addaction name="menuXML_Editor"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>

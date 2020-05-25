@@ -37,6 +37,8 @@ private slots:
 
     void on_Remove_Spaces_clicked();
 
+    void on_Check_Button_clicked();
+
 private:
     Ui::MainWindow *ui;
     

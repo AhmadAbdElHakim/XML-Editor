@@ -440,7 +440,8 @@ void MainWindow::on_JSON_Button_clicked()
       mytempfile.close();
       mytempfile.open(QIODevice::ReadWrite |QIODevice::Text);
       QTextStream strq(&mytempfile);
-      ui->input_text->setLineWrapMode(QPlainTextEdit::NoWrap);
+      ui->output_text->setLineWrapMode(QPlainTextEdit::NoWrap);
+      ui->output_text->clear();
       ui->output_text->insertPlainText(strq.readAll());
       mytempfile.close();
 
@@ -452,15 +453,17 @@ void makef(QFile *input,QFile *output){
     (*output).open(QIODevice::ReadWrite |QIODevice::Text);
     QTextStream strm(output);
     QString line;
+    QChar temp;
 
     while (!myfile.atEnd())
     { line = myfile.readLine();
 
         for (auto i:line)
         {
-           if(i=='\n'||i=='\t'){continue;}
-           if(i=='<'){strm<<'\n'<<i;continue;}
-           if(i=='>'){strm<<i<<'\n';continue;}
+           if(i=='\n'||i=='\t'){temp=i;continue;}
+           if((i=='<')&&(temp=='\n')){strm<<i;temp=i;continue;}
+           if((i=='<')&&(temp=='>')){strm<<'\n'<<i;temp=i;continue;}
+           if(i=='>'){strm<<i<<'\n';temp=i;continue;}
            strm<<i;
         }
     }
@@ -482,22 +485,32 @@ int classify_word(QString word) {//1:opening 2:closing 3:value  4:lone tag  5:co
 }
 
 void MainWindow::on_Prettify_Button_clicked()
-{      ui->output_text->clear();
+{
+    QTextCursor cursor( ui->output_text->textCursor() );
+
+    QTextCharFormat format;
+    format.setFontWeight( QFont::TypeWriter );
+
+
+
+       ui->output_text->clear();
        ui->output_text->setLineWrapMode(QPlainTextEdit::NoWrap);
        QFile tagsfile("mytags.txt");
         tagsfile.resize(0);
           makef(&myfile,&tagsfile);
         mytempfile.resize(0);
         mytempfile.open(QIODevice::ReadWrite |QIODevice::Text);
-QTextStream str(&mytempfile);
-          tagsfile.open(QIODevice::ReadOnly |QIODevice::Text);
+        QTextStream str(&mytempfile);
+        tagsfile.open(QIODevice::ReadOnly |QIODevice::Text);
 
              QString word,wordpre;
              int level = 0;
              int x,xpre;
-
-          while (!tagsfile.atEnd())
+             int q=ui->input_text->blockCount();
+             if(q<8000){
+             while (!tagsfile.atEnd())
           {
+            format.setForeground( QBrush( QColor(Qt::blue) ) );
              word = tagsfile.readLine().trimmed();
              if(word.isEmpty()){continue;}
              x=classify_word(word);
@@ -507,21 +520,24 @@ QTextStream str(&mytempfile);
               if(x==1){
                   if(xpre==0)
                   {
-                  str<<word;
+                  cursor.setCharFormat( format );
+                  cursor.insertText( word );
                   level=level+1;
                   }
                   else if(xpre==1)
                   {
-                  str<<"\n";
-                  for(int i=0;i<level;i++){str<<"  ";}
-                  str<<word;
+                  cursor.insertText("\n");
+                  for(int i=0;i<level;i++){cursor.insertText("  ");}
+                  cursor.setCharFormat( format );
+                  cursor.insertText( word );
                   level=level+1;
                   }
                   else
                   {
-                  str<<"\n";
-                  for(int i=0;i<level;i++){str<<"  ";}
-                  str<<word;
+                  cursor.insertText("\n");
+                  for(int i=0;i<level;i++){cursor.insertText("  ");}
+                  cursor.setCharFormat( format );
+                  cursor.insertText( word );
                   level=level+1;
                   }
               }
@@ -529,45 +545,133 @@ QTextStream str(&mytempfile);
               else if (x==2){
                   if(xpre==1)
                   {
-                      str<<word;
+                      cursor.setCharFormat( format );
+                      cursor.insertText( word );
                       level=level-1;
                   }
                   if(xpre==2)
                   {
                       level=level-1;
-                      str<<"\n";
-                      for(int i=0;i<level;i++){str<<"  ";}
-                      str<<word;
+                      cursor.insertText("\n");
+                      for(int i=0;i<level;i++){cursor.insertText("  ");}
+                      cursor.setCharFormat( format );
+                      cursor.insertText( word );
                   }
                   else
                   {
-                      str<<word;
+
+                      cursor.setCharFormat( format );
+                      cursor.insertText( word );
                       level=level-1;
                   }
               }
           //value
               else if(x==3){
-                  str<<word;
+
+                  format.setForeground( QBrush( QColor(Qt::black) ) );
+                  cursor.setCharFormat(format);
+                  cursor.insertText( word );
                }
           //lone tag
               else if(x==4){
-                  str<<"\n";
-                  for(int i=0;i<level;i++){str<<"  ";}
-                  str<<word;
+
+                  cursor.insertText("\n");
+                  for(int i=0;i<level;i++){cursor.insertText("  ");}
+                  format.setForeground( QBrush( QColor(Qt::darkMagenta) ) );
+                  cursor.setCharFormat( format );
+                  cursor.insertText( word );
               }
           //comment or prolog
               else {
-                  str<<"\n";
-                  str<<word;
+                  cursor.insertText("\n");
+                  format.setForeground( QBrush( QColor(Qt::darkGreen) ) );
+                  cursor.setCharFormat( format );
+                  cursor.insertText( word );
               }
           wordpre=word;
-          }
+             }
+         }
+
+         else{
+                 while (!tagsfile.atEnd())
+                           {
+                              word = tagsfile.readLine().trimmed();
+                              if(word.isEmpty()){continue;}
+                              x=classify_word(word);
+                              xpre=classify_word(wordpre);
+
+                           //opening
+                               if(x==1){
+                                   if(xpre==0)
+                                   {
+                                   str<<word;
+                                   level=level+1;
+                                   }
+                                   else if(xpre==1)
+                                   {
+                                   str<<"\n";
+                                   for(int i=0;i<level;i++){str<<"  ";}
+                                   str<<word;
+                                   level=level+1;
+                                   }
+                                   else
+                                   {
+                                   str<<"\n";
+                                   for(int i=0;i<level;i++){str<<"  ";}
+                                   str<<word;
+                                   level=level+1;
+                                   }
+                               }
+                           //closing
+                               else if (x==2){
+                                   if(xpre==1)
+                                   {
+                                       str<<word;
+                                       level=level-1;
+                                   }
+                                   if(xpre==2)
+                                   {
+                                       level=level-1;
+                                       str<<"\n";
+                                       for(int i=0;i<level;i++){str<<"  ";}
+                                       str<<word;
+                                   }
+                                   else
+                                   {
+                                       str<<word;
+                                       level=level-1;
+                                   }
+                               }
+                           //value
+                               else if(x==3){
+                                   str<<word;
+                                }
+                           //lone tag
+                               else if(x==4){
+                                   str<<"\n";
+                                   for(int i=0;i<level;i++){str<<"  ";}
+                                   str<<word;
+                               }
+                           //comment or prolog
+                               else {
+                                   str<<"\n";
+                                   str<<word;
+                               }
+                           wordpre=word;
+                           }
+                 mytempfile.close();
+                    mytempfile.open(QIODevice::ReadWrite |QIODevice::Text);
+                    QTextStream strq(&mytempfile);
+                    ui->output_text->clear();
+                    QString t=strq.readAll();
+                    format.setForeground( QBrush( QColor(Qt::black) ) );
+                    cursor.setCharFormat( format );
+                    ui->output_text->setPlainText(t);
+
+         }
 tagsfile.close();
 mytempfile.close();
-   mytempfile.open(QIODevice::ReadWrite |QIODevice::Text);
-   QTextStream strq(&mytempfile);
-   ui->output_text->insertPlainText(strq.readAll());
-   mytempfile.close();
+
 }
 
 
@@ -625,5 +729,10 @@ void MainWindow::on_Remove_Spaces_clicked()
              ui->output_text->insertPlainText(strq.readAll());
              mytempfile.close();
              tagsfile.close();
+
+}
+
+void MainWindow::on_Check_Button_clicked()
+{
 
 }
