@@ -13,6 +13,7 @@
 #include <stack>
 #include <sstream>
 #include <QtDebug>
+#include <QProcess>
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -38,6 +39,12 @@ private slots:
     void on_Remove_Spaces_clicked();
 
     void on_Check_Button_clicked();
+
+    void on_Reset_button_clicked();
+
+    void on_Exit_Button_clicked();
+
+    void on_Correct_Button_clicked();
 
 private:
     Ui::MainWindow *ui;

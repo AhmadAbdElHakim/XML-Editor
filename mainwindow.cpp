@@ -28,7 +28,7 @@ void readFile(){
 
     myfile.open(QIODevice::ReadOnly |QIODevice::Text);
     std::string line;
-
+    lines.resize(0);
     while (!myfile.atEnd())
     { line = (myfile.readLine().trimmed()).toStdString();
       lines.push_back(line);
@@ -41,7 +41,8 @@ void readFile(){
 
 void getTagsAndLines(){
     std::vector<std::string> TandL;
-
+    tags.resize(0);
+    tagsAndLines.resize(0);
     for(unsigned long long x=0;x<lines.size();x++){
 
     int tagCounter = std::count(lines[x].begin(), lines[x].end(), '<');
@@ -72,6 +73,7 @@ void getTagsAndLines(){
   }
 }
 void makePureTags(){
+    pureTags.resize(0);
   for(unsigned long long x=0;x<tags.size();x++){
     if(!tags[x].empty()){
         if(tags[x].find(' ') != std::string::npos){
@@ -84,7 +86,7 @@ void makePureTags(){
   }
 }
 void makePureTagsLinesWithoutSlash(){
-        pureTagsLinesWithoutSlash.clear();
+        pureTagsLinesWithoutSlash.resize(0);
         for(unsigned int x=0;x<tagsAndLines.size();x++){        //make tags without slash,,stored in pureTagsLinesWithoutSlash vector
             if(tagsAndLines[x][0] == '/'){
                 pureTagsLinesWithoutSlash.push_back(tagsAndLines[x].substr(1,tagsAndLines[x].length()-1));
@@ -119,6 +121,7 @@ Node* addChildren(Node* root,std::string data){
 
 void addChildren(Node* root,Node* child){
     root->children.push_back(child);
+    return;
 }
 
 void showChildren(Node* root){
@@ -130,6 +133,7 @@ void showChildren(Node* root){
     }
     stream<<"\n";
     mytempfile.close();
+    return;
 }
 
 Node* getParent(Node* root){
@@ -170,6 +174,7 @@ QTextStream stream(&mytempfile);
 
         stream << endl; // Print new line between two levels
     }
+    return;
 }
 
 Node* getMainParent(Node* root){
@@ -401,6 +406,7 @@ void print(Node* root){
     for(unsigned int x=0;x<root->children.size();x++){
         print(root->children[x]);
     }
+    return;
 }
 
 void makeJson(Node* root){
@@ -414,9 +420,11 @@ void makeJson(Node* root){
     print(root);
 
     json[json.length()-1] = '}';
+    return;
 }
+
 void MainWindow::on_JSON_Button_clicked()
-{
+{    mytempfile.resize(0);
      mytempfile.open(QIODevice::ReadWrite |QIODevice::Text);
      QTextStream st(& mytempfile);
 
@@ -440,11 +448,145 @@ void MainWindow::on_JSON_Button_clicked()
       mytempfile.close();
       mytempfile.open(QIODevice::ReadWrite |QIODevice::Text);
       QTextStream strq(&mytempfile);
-      ui->output_text->setLineWrapMode(QPlainTextEdit::NoWrap);
+      ui->output_text->setLineWrapMode(QPlainTextEdit::LineWrapMode::WidgetWidth);
       ui->output_text->clear();
       ui->output_text->insertPlainText(strq.readAll());
       mytempfile.close();
 
+}
+
+std::vector<unsigned int> mistakes;
+std::vector<std::string> tagsMC;
+std::vector<int> mistakeCase;
+
+void findMistakesLines(){
+        mistakes.resize(0);
+        tagsMC.resize(0);
+        mistakeCase.resize(0);
+//////////separate tagName from < , > , id="12"///////////////////
+  for(unsigned int x=0;x<lines.size();x++){
+
+    if(lines[x].empty()){
+        tagsMC.push_back(lines[x]);
+        continue;
+    }
+
+    int tagCounter = std::count(lines[x].begin(), lines[x].end(), '<');
+    int place1 = lines[x].find('<');
+    int place2 = lines[x].find('>');
+
+    if(tagCounter == 0){
+        tagsMC.push_back("~"+lines[x]);
+        continue;
+    }
+
+    for(int m=0;m<tagCounter;m++){
+        //cout<<lines[x].substr(place1+1,place2-place1-1)<<"\n";
+        if(m == 0){
+            std::string s = lines[x].substr(place1+1,place2-place1-1);
+            s = s.substr(0,s.find(' '));
+            tagsMC.push_back(s);
+        }else{
+            std::string s = lines[x].substr(place1+1,place2-place1-1);
+            s = s.substr(0,s.find(' '));
+            tagsMC.back() = tagsMC.back() + "-" + s;
+        }
+
+        int place3 = lines[x].find('<',place1+1);
+        int place4 = lines[x].find('>',place2+1);
+        place1 = place3;
+        place2 = place4;
+    }
+  }
+/////////////////////declare mistakes lines /////////////////////////////
+
+  std::vector<std::string> xx;
+  std::vector<int> index;
+
+  for(unsigned int x=1;x<tagsMC.size()+1;x++){
+
+    if(tagsMC[x-1].empty()){
+        mistakes.push_back(x);
+        continue;
+    }else if(tagsMC[x-1][0] == '~'){
+        continue;
+    }
+
+    if(tagsMC[x-1].find('/') == std::string::npos){
+        xx.push_back(tagsMC[x-1]);
+        index.push_back(x);
+    }else{
+    std::stringstream check1(tagsMC[x-1]);
+
+    std::string intermediate;
+
+    while(getline(check1, intermediate, '-'))
+    {
+        if(intermediate.find('/') == std::string::npos){
+            xx.push_back(intermediate);
+            index.push_back(x);
+        }else{
+            std::string s = intermediate.substr(1,intermediate.length()-1);
+            if( xx.back() == s ){
+                xx.pop_back();
+                index.pop_back();
+            }else if( xx[xx.size()-2] == s ){
+                mistakes.push_back(index.back());
+                mistakeCase.push_back(1);
+                xx.pop_back();
+                index.pop_back();
+                x--;
+            }else{
+                mistakes.push_back(x);
+                mistakeCase.push_back(2);
+                xx.pop_back();
+                index.pop_back();
+            }
+        }
+    }
+   }
+  }
+
+
+  sort(mistakes.begin(), mistakes.end());
+/*
+  for(int x=0;x<mistakes.size();x++){
+    cout<<mistakes[x]<<endl;
+  }
+*/
+}
+
+void correctMistakes(){
+  if(mistakeCase.size() > 0){
+   for(unsigned int x=0;x<mistakes.size();x++){
+    if(mistakeCase[x] == 2){
+
+        std::string s;
+        std::stringstream check1( lines[mistakes[x]-1] );
+        getline(check1, lines[mistakes[x]-1] , '/');
+        std::string temp = lines[mistakes[x]-1].substr(0,lines[mistakes[x]-1].length()-1);
+        std::stringstream check2( temp );
+        getline(check2, s , '>');
+        lines[mistakes[x]-1] = temp + "</" + s.substr(1,s.length()-1) +">";
+
+    }else if(mistakeCase[x] == 1){
+
+        std::string s;
+        std::stringstream check1( lines[mistakes[x]-1] );
+        getline(check1, s , '>');
+        lines[mistakes[x]-1] = lines[mistakes[x]-1] + "</" + s.substr(1,s.length()-1) +">";
+
+    }
+   }
+  }
+
+  for(unsigned int x=0;x<lines.size();x++){
+
+    if(lines[x].empty()){
+        lines.erase(lines.begin()+x);
+        x--;
+    }
+  }
 }
 
 //-----------------------Alaa--------------------------//
@@ -487,7 +629,6 @@ int classify_word(QString word) {//1:opening 2:closing 3:value  4:lone tag  5:co
 void MainWindow::on_Prettify_Button_clicked()
 {
     QTextCursor cursor( ui->output_text->textCursor() );
-
     QTextCharFormat format;
     format.setFontWeight( QFont::TypeWriter );
 
@@ -590,15 +731,20 @@ void MainWindow::on_Prettify_Button_clicked()
               }
           wordpre=word;
              }
-         }
+             cursor.~QTextCursor();
+             format.setForeground( QBrush( QColor(Qt::black) ) );
+             ui->output_text->setCurrentCharFormat(format);
+             }
 
          else{
+                format.setForeground( QBrush( QColor(Qt::black) ) );
                  while (!tagsfile.atEnd())
                            {
-                              word = tagsfile.readLine().trimmed();
-                              if(word.isEmpty()){continue;}
-                              x=classify_word(word);
-                              xpre=classify_word(wordpre);
+
+                     word = tagsfile.readLine().trimmed();
+                     if(word.isEmpty()){continue;}
+                     x=classify_word(word);
+                     xpre=classify_word(wordpre);
 
                            //opening
                                if(x==1){
@@ -664,13 +810,12 @@ void MainWindow::on_Prettify_Button_clicked()
                     QTextStream strq(&mytempfile);
                     ui->output_text->clear();
                     QString t=strq.readAll();
-                    format.setForeground( QBrush( QColor(Qt::black) ) );
-                    cursor.setCharFormat( format );
                     ui->output_text->setPlainText(t);
 
          }
-tagsfile.close();
-mytempfile.close();
+
+             tagsfile.close();
+             mytempfile.close();
 
 }
 
@@ -679,7 +824,7 @@ mytempfile.close();
 void MainWindow::on_OpenFileButton_clicked()
 {
     ui->input_text->clear();
-    QFile input_file(QFileDialog::getOpenFileName(this,tr("Open File"),"",tr("XML File (*.XML) ;;TextFile (*.txt)")));
+    QFile input_file(QFileDialog::getOpenFileName(this,tr("Open File"),"",tr("XML File (*.xml) ;;TextFile (*.txt)")));
     input_file.open(QIODevice::ReadOnly |QIODevice::Text);
     QTextStream stream(&input_file);
     QString text= stream.readAll();
@@ -707,6 +852,7 @@ void MainWindow::on_Save_Button_clicked()
 void MainWindow::on_Remove_Spaces_clicked()
 {
     ui->output_text->clear();
+    ui->output_text->setLineWrapMode(QPlainTextEdit::LineWrapMode::WidgetWidth);
           QFile tagsfile("mytags.txt");
           tagsfile.resize(0);
           mytempfile.resize(0);
@@ -733,6 +879,81 @@ void MainWindow::on_Remove_Spaces_clicked()
 }
 
 void MainWindow::on_Check_Button_clicked()
-{
+{   ui->output_text->clear();
+    std::string line;
+    QTextCharFormat format;
+    QTextCursor cursor( ui->output_text->textCursor() );
+     readFile();    //text file was read line by line, stored in lines vector
 
+     findMistakesLines();          //get mistakes lines and store line has mistake in mistakes vector
+
+     if(mistakes.size() == 0)
+     {
+       qDebug("correct xml\n");
+     }
+     else
+     {int j =0;
+       for (unsigned int i=1;i<lines.size()+1;i++)
+       {line=lines[i-1];
+           if(i == mistakes[j])
+           {
+               format.setFontWeight( QFont::TypeWriter );
+               format.setForeground( QBrush( QColor(Qt::red) ) );
+               cursor.setCharFormat( format );
+               cursor.insertText(QString::fromStdString(line));
+               if(cursor.PreviousCharacter != '\n'){cursor.insertText("\n");}
+               j++;
+           }
+           else
+           {
+               format.setFontWeight( QFont::TypeWriter );
+               format.setForeground( QBrush( QColor(Qt::black) ) );
+               cursor.setCharFormat( format );
+               cursor.insertText(QString::fromStdString(line));
+               if(cursor.PreviousCharacter != '\n'){cursor.insertText("\n");}
+           }
+       }
+     }
+return;
 }
+void MainWindow::on_Correct_Button_clicked()
+{
+        correctMistakes();      //corrected lines stored in lines vector
+        ui->output_text->clear();
+        std::string line;
+        QTextCharFormat format;
+        QTextCursor cursor( ui->output_text->textCursor() );
+           int j =0;
+           for (unsigned int i=1;i<lines.size()+1;i++)
+           {line=lines[i-1];
+               if(i == mistakes[j])
+               {
+                   format.setFontWeight( QFont::TypeWriter );
+                   format.setForeground( QBrush( QColor(Qt::darkGreen) ) );
+                   cursor.setCharFormat( format );
+                   cursor.insertText(QString::fromStdString(line));
+                   if(cursor.PreviousCharacter != '\n'){cursor.insertText("\n");}
+                   j++;
+               }
+               else
+               {
+                   format.setFontWeight( QFont::TypeWriter );
+                   format.setForeground( QBrush( QColor(Qt::black) ) );
+                   cursor.setCharFormat( format );
+                   cursor.insertText(QString::fromStdString(line));
+                   if(cursor.PreviousCharacter != '\n'){cursor.insertText("\n");}
+               }
+           }
+         }
+void MainWindow::on_Reset_button_clicked()
+{
+        qApp->quit();
+        QProcess::startDetached(qApp->arguments()[0], qApp->arguments());
+}
+
+void MainWindow::on_Exit_Button_clicked()
+{
+    qApp->quit();
+}
+
+
