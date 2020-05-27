@@ -14,6 +14,7 @@
 #include <sstream>
 #include <QtDebug>
 #include <QProcess>
+#include<QMessageBox>
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -45,6 +46,7 @@ private slots:
     void on_Exit_Button_clicked();
 
     void on_Correct_Button_clicked();
+
 
 private:
     Ui::MainWindow *ui;

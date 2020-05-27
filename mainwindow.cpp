@@ -448,11 +448,53 @@ void MainWindow::on_JSON_Button_clicked()
       mytempfile.close();
       mytempfile.open(QIODevice::ReadWrite |QIODevice::Text);
       QTextStream strq(&mytempfile);
-      ui->output_text->setLineWrapMode(QPlainTextEdit::LineWrapMode::WidgetWidth);
+      ui->output_text->setLineWrapMode(QPlainTextEdit::LineWrapMode::NoWrap);
       ui->output_text->clear();
-      ui->output_text->insertPlainText(strq.readAll());
-      mytempfile.close();
+      QString out=strq.readAll();
+      QChar prevchar;
+       int level=0;
+       for(auto i:out)
+      {
+          if(i=='{'){
+              ui->output_text->insertPlainText(i);
+              ui->output_text->insertPlainText("\n");
+              for(int j=-1;j<level;j++){ui->output_text->insertPlainText("    ");}
+              level=level+1;
+          }
+          else if(i=='}'){
 
+              ui->output_text->insertPlainText("\n");
+              for(int j=0;j<level;j++){ui->output_text->insertPlainText("    ");}
+              ui->output_text->insertPlainText(i);
+              level=level-1;}
+          else if(i=='['){
+              ui->output_text->insertPlainText(i);
+              ui->output_text->insertPlainText("\n");
+              for(int j=-1;j<level;j++){ui->output_text->insertPlainText("    ");}
+              level=level+1;}
+          else if(i==']'){
+
+              ui->output_text->insertPlainText("\n");
+              for(int j=0;j<level;j++){ui->output_text->insertPlainText("    ");}
+               ui->output_text->insertPlainText(i);
+               level=level-1;}
+          else if(i==',')
+          {
+              ui->output_text->insertPlainText(i);
+              ui->output_text->insertPlainText("\n");
+              for(int j=0;j<level;j++){ui->output_text->insertPlainText("    ");}
+          }
+          else {ui->output_text->insertPlainText(i);}
+          prevchar=i;
+      }
+      mytempfile.close();
+      json = "{";
+      lines.resize(0);
+       tags.resize(0);
+       tagsAndLines.resize(0);
+       pureTags.resize(0);
+      pureTagsLinesWithoutSlash.resize(0);
+       return;
 }
 
 std::vector<unsigned int> mistakes;
@@ -549,18 +591,14 @@ void findMistakesLines(){
 
 
   sort(mistakes.begin(), mistakes.end());
-/*
-  for(int x=0;x<mistakes.size();x++){
-    cout<<mistakes[x]<<endl;
-  }
-*/
+return;
 }
 
 void correctMistakes(){
   if(mistakeCase.size() > 0){
    for(unsigned int x=0;x<mistakes.size();x++){
-    if(mistakeCase[x] == 2){
 
+    if(mistakeCase[x] == 2){
         std::string s;
         std::stringstream check1( lines[mistakes[x]-1] );
         getline(check1, lines[mistakes[x]-1] , '/');
@@ -569,24 +607,25 @@ void correctMistakes(){
         getline(check2, s , '>');
         lines[mistakes[x]-1] = temp + "</" + s.substr(1,s.length()-1) +">";
 
-    }else if(mistakeCase[x] == 1){
-
+    }else if(mistakeCase[x] == 1 && lines[mistakes[x]-1][lines[mistakes[x]-1].length()-1] != '>'){
         std::string s;
         std::stringstream check1( lines[mistakes[x]-1] );
         getline(check1, s , '>');
         lines[mistakes[x]-1] = lines[mistakes[x]-1] + "</" + s.substr(1,s.length()-1) +">";
-
+    }else if(mistakeCase[x] == 1){
+        std::string s;
+        std::stringstream check1( lines[mistakes[x]-1] );
+        getline(check1, s , '>');
+        for(unsigned int y=0;y<lines.size();y++){
+            if(lines[y].empty()){
+                lines[y] = "</" + s.substr(1,s.length()-1) +">";
+            }
+        }
     }
+
    }
   }
-
-  for(unsigned int x=0;x<lines.size();x++){
-
-    if(lines[x].empty()){
-        lines.erase(lines.begin()+x);
-        x--;
-    }
-  }
+  return;
 }
 
 //-----------------------Alaa--------------------------//
@@ -840,7 +879,7 @@ void MainWindow::on_OpenFileButton_clicked()
 
 void MainWindow::on_Save_Button_clicked()
 {
- QFile output_file(QFileDialog::getSaveFileName(this,tr("Save File"),"",tr("Text File ()*.txt")));
+ QFile output_file(QFileDialog::getSaveFileName(this,tr("Save File"),"",tr("Text File ()*.txt;;XML File ()*.xml")));
  output_file.open(QIODevice::ReadWrite|QIODevice::Text);
  QString text=ui->output_text->toPlainText();
      output_file.write(text.toUtf8());
@@ -872,14 +911,15 @@ void MainWindow::on_Remove_Spaces_clicked()
              mytempfile.close();
              mytempfile.open(QIODevice::ReadWrite |QIODevice::Text);
              QTextStream strq(&mytempfile);
-             ui->output_text->insertPlainText(strq.readAll());
+             ui->output_text->setPlainText(strq.readAll());
              mytempfile.close();
              tagsfile.close();
 
 }
 
 void MainWindow::on_Check_Button_clicked()
-{   ui->output_text->clear();
+{   lines.resize(0);
+    ui->output_text->clear();
     std::string line;
     QTextCharFormat format;
     QTextCursor cursor( ui->output_text->textCursor() );
@@ -889,7 +929,9 @@ void MainWindow::on_Check_Button_clicked()
 
      if(mistakes.size() == 0)
      {
-       qDebug("correct xml\n");
+      QMessageBox enteredString;
+      enteredString.setText("Correct XML File");
+      enteredString.exec();
      }
      else
      {int j =0;
@@ -914,6 +956,7 @@ void MainWindow::on_Check_Button_clicked()
            }
        }
      }
+
 return;
 }
 void MainWindow::on_Correct_Button_clicked()
@@ -932,7 +975,7 @@ void MainWindow::on_Correct_Button_clicked()
                    format.setForeground( QBrush( QColor(Qt::darkGreen) ) );
                    cursor.setCharFormat( format );
                    cursor.insertText(QString::fromStdString(line));
-                   if(cursor.PreviousCharacter != '\n'){cursor.insertText("\n");}
+                   cursor.insertText("\n");
                    j++;
                }
                else
@@ -941,7 +984,7 @@ void MainWindow::on_Correct_Button_clicked()
                    format.setForeground( QBrush( QColor(Qt::black) ) );
                    cursor.setCharFormat( format );
                    cursor.insertText(QString::fromStdString(line));
-                   if(cursor.PreviousCharacter != '\n'){cursor.insertText("\n");}
+                   cursor.insertText("\n");
                }
            }
          }
@@ -955,5 +998,4 @@ void MainWindow::on_Exit_Button_clicked()
 {
     qApp->quit();
 }
-
 

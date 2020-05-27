@@ -209,17 +209,6 @@
      </layout>
     </item>
    </layout>
-   <zorder>OpenFileButton</zorder>
-   <zorder>Save_Button</zorder>
-   <zorder>input_text</zorder>
-   <zorder>label</zorder>
-   <zorder>label_2</zorder>
-   <zorder>Prettify_Button</zorder>
-   <zorder>JSON_Button</zorder>
-   <zorder>Remove_Spaces</zorder>
-   <zorder>Check_Button</zorder>
-   <zorder>output_text</zorder>
-   <zorder>Correct_Button</zorder>
    <zorder></zorder>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
