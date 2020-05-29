@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -12,7 +13,18 @@ MainWindow::~MainWindow()
 {
     delete ui;
 }
-
+int classify_word(QString word) {//1:opening 2:closing 3:value  4:lone tag  5:comment  6:prolog
+   if(word.isEmpty()){return 0;}
+    if((word[0]=='<')&&word[word.length()-1]=='>')
+    {
+       if(word[1]=='/'){return 2;}
+       if(word[word.length()-2]=='/'){return 4;}
+       if(word[1]=='?'){return 6;}
+       if(word[1]=='!'){return 5;}
+       return 1;
+    }
+    return 3;
+}
 //------------------------Hossam-----------------------//
 
 std::vector <std::string> lines;
@@ -104,12 +116,24 @@ struct Node{
     std::string data;
     Node* parent;
     std::vector<Node *> children;
+    std::string internalData;
 };
 
 Node* makeNewNode(std::string data){
-    Node* newNode = new Node;
-    newNode->data = data;
-    return newNode;
+    std::string mainTag,internalData;
+        if(data.find('=') == -1){
+            Node* newNode = new Node;
+            newNode->data = data;
+            return newNode;
+        }else{
+            int index = data.find(' ');
+            mainTag = data.substr(0,index);
+            internalData = data.substr(index+1,data.length()-1);
+            Node* newNode = new Node;
+            newNode->data = mainTag;
+            newNode->internalData = internalData;
+            return newNode;
+        }
 }
 
 Node* addChildren(Node* root,std::string data){
@@ -266,6 +290,7 @@ void makeOneNodeForRepeatedChild(Node* root){
 
         }
         addChildren(root,simp);
+        simp->parent = root;
      }
 return;
 }
@@ -330,72 +355,59 @@ void makeBrackets(Node* root){
 }
 
 void printNode(Node* root){
+
     //////////////// print * nodes  /////////////////////////////
-
-    if((root->data == "*") && (root->children.size() == 1) && (root->children[0]->children.size() == 0))
-    {return;}
-
-    else if(root->data == "*" && root->children.size() >= 1)
-    {json+="{";return;}
-
-    ////////////// print last nodes /////////////////////////////
-
-    else if(root->children.size() == 0 && (root->data[root->data.length()-1] == '}' || root->data[root->data.length()-1] == ']') )
-    {json+=root->data+",";}
-
-    else if(root->children.size() == 0)
-    {json+=root->data+",";}
-
-    //////////////print tag nodes /////////////////////////////////
-
-    else if(root->children.size() == 1 && root->children[0]->children.size() != 0 && root->data != "*" && root->data.find('=') == -1)
-    {json+=root->data+":{";}
-
-    else if(root->children.size() == 1 && root->children[0]->children.size() != 0 && root->data != "*" && root->data.find('=') != -1)
-    {
-        std::stringstream check1(root->data);
-        std::string f,s;
-        std::string total;
-        getline(check1, f, ' ');
-        while(getline(check1, s,' ')){
-            std::stringstream check2(s);
-            std::string l,r;
-            getline(check2, l, '=');
-            getline(check2, r);
-            l = "\"@" +l+ "\"\:";
-            total+=l+r+",";
-            }
-        total = total.substr(0,total.length()-2);
-        json+=f+"\"\:{"+total+",";
+    if(root->data == "\*" && root->children.size() == 1 && root->children[0]->children.size() == 0 && root->internalData.empty()){
+        return;
+    }if(root->data == "\*" && root->children.size() == 1 && root->children[0]->children.size() == 0 && !root->internalData.empty()){
+        json+=root->internalData;
+    }else if(root->data == "\*" && root->children.size() >= 1 && root->internalData.empty()){
+        json+="{";
+    }else if(root->data == "\*" && root->children.size() >= 1 && !root->internalData.empty()){
+        json+=root->internalData;
     }
 
-    else if(root->children.size() == 1 && root->data != "*")
-    {json+=root->data+":";}
+    ////////////// print last nodes /////////////////////////////
+    else if(root->children.size() == 0 && (root->data[root->data.length()-1] == '}' || root->data[root->data.length()-1] == ']') ){
+        //cout<<root->data;
+        if(!root->parent->internalData.empty()){
+            json+="\"text\"\:"+root->data+",";
+        }else{
+            json+=root->data+",";
+        }
+    }else if(root->children.size() == 0){
+        //cout<<root->data<<",";
+        if(root->parent->children.size() == 1 && root->parent->internalData.empty()){
+            json+=root->data+",";
+        }else{
+            json+=root->data+"},";
+        }
+    }
+
+    ///////////print tag nodes /////////////////////////////////
+    else if(root->children.size() == 1 && root->children[0]->children.size() != 0 && root->data != "\*" && root->internalData.empty() && root->parent != NULL){
+        //cout<<root->data<<"\:{";
+        json+=root->data+"\:{";
+    }else if(root->children.size() == 1 && root->children[0]->children.size() != 0 && root->data != "\*" && !root->internalData.empty() && root->parent != NULL){
+        //cout<<root->data<<"\:{";
+        json+=root->data+"\:"+root->internalData;
+    }else if(root->children.size() == 1 && root->data != "\*" && root->parent != NULL && root->internalData.empty()){
+        //cout<<root->data<<":";
+        json+=root->data+":";
+    }else if(root->children.size() == 1 && root->data != "\*" && root->parent != NULL && !root->internalData.empty()){
+        json+=root->data+"\:"+root->internalData;
+    }
 
     /////////print merged nodes //////////////////////////////
-
-    else if(root->children.size() >0 && root->children[0]->data == "*")
-    {json+=root->data+"\:[";}
-
-    else if(root->children.size() > 0 && root->children[0]->data != "*" && root->data.find('=') == -1)
-    {json+=root->data+"\:{";}
-
-    else if(root->children.size() > 0 && root->children[0]->data != "*" && root->data.find('=') != -1)
-    {
-        std::stringstream check1(root->data);
-        std::string f,s;
-        std::string total;
-        getline(check1, f, ' ');
-        while(getline(check1, s,' ')){
-            std::stringstream check2(s);
-            std::string l,r;
-            getline(check2, l, '=');
-            getline(check2, r);
-            l = "\"@"+l+"\"\:";
-            total+=l+r+",";
-        }
-        total = total.substr(0,total.length()-2);
-        json+=f+"\"\:{"+total+",";
+    else if(root->children.size() >0 && root->children[0]->data == "\*"){
+        //cout<<root->data<<"\:[";
+        json+=root->data+"\:[";
+    }else if(root->children.size() > 0 && root->children[0]->data != "\*" && root->internalData.empty()){
+        //cout<<root->data<<":{";
+        json+=root->data+"\:";
+    }else if(root->children.size() > 0 && root->children[0]->data != "\*" && !root->internalData.empty()){
+        //cout<<root->data<<":{";
+        json+=root->data+"\:"+root->internalData;
     }
 
 }
@@ -423,6 +435,41 @@ void makeJson(Node* root){
     return;
 }
 
+void regulateHyberTags(Node* root){
+    if(!root->internalData.empty()){
+        for(unsigned int x=0;x<root->internalData.length();x++){
+          if(x == 0){
+            root->internalData.insert(0,"{\"");
+          }
+          if(root->internalData[x] == ' ' && root->internalData[x-1] == '"'){
+            root->internalData[x]=',';
+          }else if(root->internalData[x] == '='){
+            root->internalData[x]=':';
+          }
+          if(root->internalData[x]==','){
+            root->internalData.insert(x+1,"\"");
+          }else if(root->internalData[x]==':'){
+            root->internalData.insert(x,"\"");
+            x++;
+          }
+        }
+        root->internalData+=",";
+    }
+
+
+
+}
+
+
+void passRoot(Node* root){
+
+    regulateHyberTags(root);
+    for(unsigned int x=0;x<root->children.size();x++){
+        passRoot(root->children[x]);
+    }
+
+}
+
 void MainWindow::on_JSON_Button_clicked()
 {    mytempfile.resize(0);
      mytempfile.open(QIODevice::ReadWrite |QIODevice::Text);
@@ -442,6 +489,8 @@ void MainWindow::on_JSON_Button_clicked()
 
       organizeTree(current_root);                                           //organize tree, as if repeated node get merged
 
+      passRoot(current_root);
+
       makeJson(current_root);                       //transfer xml tree to json
 
       st<<QString::fromStdString(json);         //print json
@@ -458,31 +507,31 @@ void MainWindow::on_JSON_Button_clicked()
           if(i=='{'){
               ui->output_text->insertPlainText(i);
               ui->output_text->insertPlainText("\n");
-              for(int j=-1;j<level;j++){ui->output_text->insertPlainText("    ");}
+              //for(int j=0;j<level;j++){ui->output_text->insertPlainText("    ");}
               level=level+1;
           }
           else if(i=='}'){
 
               ui->output_text->insertPlainText("\n");
-              for(int j=0;j<level;j++){ui->output_text->insertPlainText("    ");}
+              //for(int j=1;j<level;j++){ui->output_text->insertPlainText("    ");}
               ui->output_text->insertPlainText(i);
               level=level-1;}
           else if(i=='['){
               ui->output_text->insertPlainText(i);
               ui->output_text->insertPlainText("\n");
-              for(int j=-1;j<level;j++){ui->output_text->insertPlainText("    ");}
+              //for(int j=1;j<level;j++){ui->output_text->insertPlainText("    ");}
               level=level+1;}
           else if(i==']'){
 
               ui->output_text->insertPlainText("\n");
-              for(int j=0;j<level;j++){ui->output_text->insertPlainText("    ");}
+              //for(int j=0;j<level;j++){ui->output_text->insertPlainText("    ");}
                ui->output_text->insertPlainText(i);
                level=level-1;}
           else if(i==',')
           {
               ui->output_text->insertPlainText(i);
               ui->output_text->insertPlainText("\n");
-              for(int j=0;j<level;j++){ui->output_text->insertPlainText("    ");}
+              //for(int j=0;j<level;j++){ui->output_text->insertPlainText("    ");}
           }
           else {ui->output_text->insertPlainText(i);}
           prevchar=i;
@@ -512,6 +561,7 @@ void findMistakesLines(){
         tagsMC.push_back(lines[x]);
         continue;
     }
+    if(classify_word(QString::fromStdString(lines[x]))==4||classify_word(QString::fromStdString(lines[x]))==5||classify_word(QString::fromStdString(lines[x]))==6){continue;}
 
     int tagCounter = std::count(lines[x].begin(), lines[x].end(), '<');
     int place1 = lines[x].find('<');
@@ -628,6 +678,7 @@ void correctMistakes(){
   return;
 }
 
+
 //-----------------------Alaa--------------------------//
 void makef(QFile *input,QFile *output){
     (*input).open(QIODevice::ReadWrite |QIODevice::Text);
@@ -652,18 +703,7 @@ void makef(QFile *input,QFile *output){
     (*input).close();
     (*output).close();
 }
-int classify_word(QString word) {//1:opening 2:closing 3:value  4:lone tag  5:comment  6:prolog
-   if(word.isEmpty()){return 0;}
-    if((word[0]=='<')&&word[word.length()-1]=='>')
-    {
-       if(word[1]=='/'){return 2;}
-       if(word[word.length()-2]=='/'){return 4;}
-       if(word[1]=='?'){return 6;}
-       if(word[1]=='!'){return 5;}
-       return 1;
-    }
-    return 3;
-}
+
 
 void MainWindow::on_Prettify_Button_clicked()
 {
@@ -999,3 +1039,110 @@ void MainWindow::on_Exit_Button_clicked()
     qApp->quit();
 }
 
+int synsetCounter=0;
+QString s;
+void countSynset(Node* root){
+
+    for(unsigned int x=0;x<root->children.size();x++){
+        if(root->children[0]->data == "synset"){
+            if(root->children[0]->children[0]->data == "*"){
+                synsetCounter=synsetCounter+root->children[0]->children.size();
+            }else{
+                synsetCounter=synsetCounter+1;
+            }
+        }
+        countSynset(root->children[x]);
+    }
+
+}
+
+void getDef(Node* root){
+
+    for(unsigned int x=0;x<root->children.size();x++){
+        if(root->children[x]->data == "def"){
+            if(root->children[x]->children.size() == 0){
+               s=s+ QString::fromStdString(getLastChild(root->children[x])->data);
+
+            }else{
+                for(unsigned int y=0;y<root->children[x]->children.size();y++){
+                 s=s+ QString::fromStdString(getLastChild(root->children[x]->children[y])->data)+"\n";
+                }
+            }
+        }
+    }
+}
+
+void findName(Node* root,std::string name){
+    for(unsigned int x=0;x<root->children.size();x++){
+        if( root->children[0]->data == name ){
+            if(root->data == "word"){
+                getDef(root->parent);
+            }else{
+                getDef(root->parent->parent);
+                break;
+            }
+        }else{
+            findName(root->children[x],name);
+        }
+    }
+}
+
+void MainWindow::on_pushButton_2_clicked()
+{
+    QFile tagsfile("mytags.txt");
+    tagsfile.resize(0);
+    mytempfile.resize(0);
+       makef(&myfile,&tagsfile);
+
+
+       tagsfile.open(QIODevice::ReadWrite |QIODevice::Text);
+       mytempfile.open(QIODevice::ReadWrite |QIODevice::Text);
+       QTextStream str(&mytempfile);
+       QString word;
+       int coun=0;
+       while (!tagsfile.atEnd())
+       { word = tagsfile.readLine().trimmed();
+          if((classify_word(word)==2)&&(word=="</synset>")){
+              coun=coun+1;
+          }
+
+       }
+      ui->lcdNumber->setPalette(Qt::black);
+       ui->lcdNumber->display(coun);
+       mytempfile.close();
+       tagsfile.close();
+
+}
+
+void MainWindow::on_pushButton_clicked()
+{
+    mytempfile.resize(0);
+         mytempfile.open(QIODevice::ReadWrite |QIODevice::Text);
+         QTextStream st(& mytempfile);
+
+          readFile();    //text file was read line by line, stored in lines vector
+
+          getTagsAndLines();      //sort lines according to 1-tags only stored in tags vector, 2-tags and sentences stored in tagsAndLines vector
+
+          makePureTags();         // separate line of tags from extra data ex. ( ahmed id="1" ) ---> ( ahmed ),stored in pureTags vector
+
+          makePureTagsLinesWithoutSlash();               //this vector contain openTags without slash or data, closeTag without slash, data start with ~ sign
+
+          Node* current_root = NULL;
+
+          current_root = makeTree(pureTagsLinesWithoutSlash,current_root);      //make Tree, return main Node
+
+          organizeTree(current_root);
+          QString text=ui->textEdit->toPlainText();
+          std::string text1=text.toStdString();
+          findName(current_root,text1);
+          ui->textEdit_2->setPlainText(s);
+          s="";
+          mytempfile.close();
+          lines.resize(0);
+           tags.resize(0);
+           tagsAndLines.resize(0);
+           pureTags.resize(0);
+          pureTagsLinesWithoutSlash.resize(0);
+           return;
+}
