@@ -357,57 +357,37 @@ void makeBrackets(Node* root){
 void printNode(Node* root){
 
     //////////////// print * nodes  /////////////////////////////
-    if(root->data == "\*" && root->children.size() == 1 && root->children[0]->children.size() == 0 && root->internalData.empty()){
-        return;
-    }if(root->data == "\*" && root->children.size() == 1 && root->children[0]->children.size() == 0 && !root->internalData.empty()){
+   if(root->data == "\*"){
         json+=root->internalData;
-    }else if(root->data == "\*" && root->children.size() >= 1 && root->internalData.empty()){
-        json+="{";
-    }else if(root->data == "\*" && root->children.size() >= 1 && !root->internalData.empty()){
-        json+=root->internalData;
-    }
+   }
 
     ////////////// print last nodes /////////////////////////////
-    else if(root->children.size() == 0 && (root->data[root->data.length()-1] == '}' || root->data[root->data.length()-1] == ']') ){
-        //cout<<root->data;
-        if(!root->parent->internalData.empty()){
-            json+="\"text\"\:"+root->data+",";
-        }else{
+    else if(root->children.size() == 0){
+        if(root->parent->internalData.empty()&& (root->data[root->data.length()-1] != '}' || root->data[root->data.length()-1] != ']')){
             json+=root->data+",";
-        }
-    }else if(root->children.size() == 0){
-        //cout<<root->data<<",";
-        if(root->parent->children.size() == 1 && root->parent->internalData.empty()){
-            json+=root->data+",";
-        }else{
-            json+=root->data+"},";
+        }else if(root->parent->internalData.empty()){
+            json+=root->data;
+        }else if(root->parent->internalData.empty() && root->parent->children.size()==1 && (root->data[root->data.length()-1] != '}' || root->data[root->data.length()-1] != ']')){
+            json+=root->data;
+        }else if(!root->parent->internalData.empty() && root->parent->children.size()==1 && (root->data[root->data.length()-1] != '}' || root->data[root->data.length()-1] != ']')){
+            json+="\"text\":"+root->data+"},";
         }
     }
 
-    ///////////print tag nodes /////////////////////////////////
-    else if(root->children.size() == 1 && root->children[0]->children.size() != 0 && root->data != "\*" && root->internalData.empty() && root->parent != NULL){
-        //cout<<root->data<<"\:{";
-        json+=root->data+"\:{";
-    }else if(root->children.size() == 1 && root->children[0]->children.size() != 0 && root->data != "\*" && !root->internalData.empty() && root->parent != NULL){
-        //cout<<root->data<<"\:{";
-        json+=root->data+"\:"+root->internalData;
-    }else if(root->children.size() == 1 && root->data != "\*" && root->parent != NULL && root->internalData.empty()){
-        //cout<<root->data<<":";
-        json+=root->data+":";
-    }else if(root->children.size() == 1 && root->data != "\*" && root->parent != NULL && !root->internalData.empty()){
-        json+=root->data+"\:"+root->internalData;
+    ///////////print merged node /////////////////////////////////
+    else if(root->children.size() >0 && root->children[0]->data=="\*"){
+        json+=root->data+":[";
     }
 
     /////////print merged nodes //////////////////////////////
-    else if(root->children.size() >0 && root->children[0]->data == "\*"){
-        //cout<<root->data<<"\:[";
-        json+=root->data+"\:[";
-    }else if(root->children.size() > 0 && root->children[0]->data != "\*" && root->internalData.empty()){
-        //cout<<root->data<<":{";
-        json+=root->data+"\:";
-    }else if(root->children.size() > 0 && root->children[0]->data != "\*" && !root->internalData.empty()){
-        //cout<<root->data<<":{";
-        json+=root->data+"\:"+root->internalData;
+    else if(root->children.size()>=1){
+        if(root->internalData.empty()){
+            json+=root->data+":";
+        }else if(!root->internalData.empty() && root->children.size()==1){
+            json+=root->data+":"+root->internalData;
+        }else if(!root->internalData.empty() && root->children.size()>1){
+            json+=root->data+":"+root->internalData;
+        }
     }
 
 }
@@ -435,29 +415,27 @@ void makeJson(Node* root){
     return;
 }
 
+
 void regulateHyberTags(Node* root){
-    if(!root->internalData.empty()){
-        for(unsigned int x=0;x<root->internalData.length();x++){
-          if(x == 0){
-            root->internalData.insert(0,"{\"");
+      if(!root->internalData.empty()){
+          for(unsigned int x=0;x<root->internalData.length();x++){
+            if(x == 0){
+               root->internalData = "{\""+root->internalData;
+            }
+            if(root->internalData[x] == ' ' && root->internalData[x-1] == '"'){
+               root->internalData[x]=',';
+            }else if(root->internalData[x] == '='){
+               root->internalData[x]=':';
+            }
+            if(root->internalData[x]==','){
+               root->internalData.insert(x+1,"\"");
+            }else if(root->internalData[x]==':'){
+               root->internalData.insert(x,"\"");
+               x++;
+            }
           }
-          if(root->internalData[x] == ' ' && root->internalData[x-1] == '"'){
-            root->internalData[x]=',';
-          }else if(root->internalData[x] == '='){
-            root->internalData[x]=':';
-          }
-          if(root->internalData[x]==','){
-            root->internalData.insert(x+1,"\"");
-          }else if(root->internalData[x]==':'){
-            root->internalData.insert(x,"\"");
-            x++;
-          }
+            root->internalData+=",";
         }
-        root->internalData+=",";
-    }
-
-
-
 }
 
 
@@ -655,20 +633,20 @@ void correctMistakes(){
         std::string temp = lines[mistakes[x]-1].substr(0,lines[mistakes[x]-1].length()-1);
         std::stringstream check2( temp );
         getline(check2, s , '>');
-        lines[mistakes[x]-1] = temp + "</" + s.substr(1,s.length()-1) +">";
+        lines[mistakes[x]-1] = temp + "</" + s.substr(1,s.find_first_of(' ')) +">";
 
-    }else if(mistakeCase[x] == 1 && lines[mistakes[x]-1][lines[mistakes[x]-1].length()-1] != '>'){
+    }if(mistakeCase[x] == 1 && lines[mistakes[x]-1][lines[mistakes[x]-1].length()-1] != '>'){
         std::string s;
         std::stringstream check1( lines[mistakes[x]-1] );
         getline(check1, s , '>');
-        lines[mistakes[x]-1] = lines[mistakes[x]-1] + "</" + s.substr(1,s.length()-1) +">";
+        lines[mistakes[x]-1] = lines[mistakes[x]-1] + "</" + s.substr(1,s.find_first_of(' ')) +">";
     }else if(mistakeCase[x] == 1){
         std::string s;
         std::stringstream check1( lines[mistakes[x]-1] );
         getline(check1, s , '>');
         for(unsigned int y=0;y<lines.size();y++){
             if(lines[y].empty()){
-                lines[y] = "</" + s.substr(1,s.length()-1) +">";
+                lines[y] = "</" + s.substr(1,s.find_first_of(' ')) +">";
             }
         }
     }
